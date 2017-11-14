@@ -50,7 +50,7 @@ class RequestsFetcher(Fetcher):
     """Fetches via HTTP from the Discogs API."""
     def fetch(self, client, method, url, data=None, headers=None, json=True):
         resp = requests.request(method, url, data=data, headers=headers)
-        return resp.content, resp.status_code
+        return resp.content, resp.status_code, resp.headers['X-Discogs-Ratelimit-Remaining']
 
 
 class UserTokenRequestsFetcher(Fetcher):
@@ -61,7 +61,7 @@ class UserTokenRequestsFetcher(Fetcher):
     def fetch(self, client, method, url, data=None, headers=None, json=True):
         resp = requests.request(method, url, params={'token':self.user_token},
                                 data=data, headers=headers)
-        return resp.content, resp.status_code
+        return resp.content, resp.status_code, resp.headers['X-Discogs-Ratelimit-Remaining']
 
 
 class OAuth2Fetcher(Fetcher):
@@ -93,7 +93,7 @@ class OAuth2Fetcher(Fetcher):
                                               body=data, headers=headers)
 
         resp = request(method, uri, headers=headers, data=body)
-        return resp.content, resp.status_code
+        return resp.content, resp.status_code, resp.headers['X-Discogs-Ratelimit-Remaining']
 
 
 class FilesystemFetcher(Fetcher):

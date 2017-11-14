@@ -2,6 +2,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import warnings
 import json
+import time
 try:
     # python2
     from urllib import urlencode
@@ -20,6 +21,7 @@ class Client(object):
     _request_token_url = 'https://api.discogs.com/oauth/request_token'
     _authorize_url = 'https://www.discogs.com/oauth/authorize'
     _access_token_url = 'https://api.discogs.com/oauth/access_token'
+    _reached_limit_waiting_time = 3 # Adjust this value
 
     def __init__(self, user_agent, consumer_key=None, consumer_secret=None, token=None, secret=None, user_token=None):
         """An interface to the Discogs API."""
@@ -58,9 +60,10 @@ class Client(object):
             params['oauth_callback'] = callback_url
         postdata = urlencode(params)
 
-        content, status_code = self._fetcher.fetch(self, 'POST', self._request_token_url, data=postdata, headers=params)
+        content, status_code, remaining_requests = self._fetcher.fetch(self, 'POST', self._request_token_url, data=postdata, headers=params)
         if status_code != 200:
             raise AuthorizationError('Could not get request token.', status_code, content)
+        if int(remaining_requests) <= 3: time.sleep(self._reached_limit_waiting_time)
 
         token, secret = self._fetcher.store_token_from_qs(content)
 
@@ -81,9 +84,10 @@ class Client(object):
         params = {}
         params['User-Agent'] = self.user_agent
 
-        content, status_code = self._fetcher.fetch(self, 'POST', self._access_token_url, headers=params)
+        content, status_code, remaining_requests = self._fetcher.fetch(self, 'POST', self._access_token_url, headers=params)
         if status_code != 200:
             raise HTTPError('Invalid response from access token URL.', status_code)
+        if int(remaining_requests) <= 3: time.sleep(self._reached_limit_waiting_time)
 
         token, secret = self._fetcher.store_token_from_qs(content)
 
@@ -107,10 +111,12 @@ class Client(object):
         if data:
             headers['Content-Type'] = 'application/x-www-form-urlencoded'
 
-        content, status_code = self._fetcher.fetch(self, method, url, data=data, headers=headers)
-
+        content, status_code, remaining_requests = self._fetcher.fetch(self, method, url, data=data, headers=headers)
         if status_code == 204:
             return None
+
+        if int(remaining_requests) <= 3: time.sleep(self._reached_limit_waiting_time)
+
 
         body = json.loads(content.decode('utf8'))
 
